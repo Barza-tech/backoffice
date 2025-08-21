@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Home, Users, Calendar, Map, Bell, BarChart3, 
-  CreditCard, MessageSquare, Globe, Settings, 
+  CreditCard, MessageSquare, Globe, Settings, Receipt,
   Scissors, X, Menu 
 } from 'lucide-react';
 
@@ -26,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'statistics', label: 'Estatísticas', icon: BarChart3 },
     { id: 'payments', label: 'Pagamentos', icon: CreditCard },
+    { id: 'commissions', label: 'Comissões', icon: Receipt },
     { id: 'reviews', label: 'Avaliações', icon: MessageSquare },
     { id: 'content', label: 'Conteúdo', icon: Globe },
     { id: 'settings', label: 'Configurações', icon: Settings },

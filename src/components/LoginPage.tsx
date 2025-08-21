@@ -1,31 +1,146 @@
 import React, { useState } from 'react';
 import { Scissors, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import Cookies from 'js-cookie';
+// import supabase from '../utils/supabase'; // Importa o cliente Supabase se necessário
+import supabase from '@utils/supabase'; // Importa o cliente Supabase
 
 interface LoginPageProps {
   onLogin: (userData: any) => void;
 }
+
+const SB_URL = import.meta.env.VITE_SUPABASE_URL;
+const SB_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// nomes dos cookies (podes ajustar)
+const ACCESS_COOKIE = 'sb-access-token';
+const REFRESH_COOKIE = 'sb-refresh-token';
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('admin@barza.com');
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    onLogin({
-      id: 1,
-      name: 'Admin Barza',
-      email: email,
-      role: 'Super Admin'
-    });
-    
-    setIsLoading(false);
+    setErrorMessage('');
+
+    try {
+      // 1) LOGIN (REST Auth)
+      const resp = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SB_ANON,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const authData = await resp.json();
+      if (!resp.ok) {
+        // Supabase pode devolver error_description / msg
+        const msg =
+          authData?.error_description ||
+          authData?.msg ||
+          'Credenciais inválidas.';
+        throw new Error(msg);
+      }
+
+      const {
+        access_token,
+        refresh_token,
+        user,           // <- tem o id do utilizador
+        expires_in,
+        expires_at,
+      } = authData;
+
+      if (!access_token || !user?.id) {
+        throw new Error('Resposta de autenticação incompleta.');
+      }
+
+      // 2) Guardar tokens em cookies (frontend)
+      // Em produção ideal é HTTP-only (via backend). Aqui é frontal para cumprir o teu requisito.
+      const secure = window.location.protocol === 'https:';
+      const maxAgeDays = 7; // ajusta conforme queiras
+
+      Cookies.set(ACCESS_COOKIE, access_token, {
+        expires: maxAgeDays,
+        sameSite: 'lax',
+        secure,
+        path: '/',
+      });
+
+      if (refresh_token) {
+        Cookies.set(REFRESH_COOKIE, refresh_token, {
+          expires: maxAgeDays,
+          sameSite: 'lax',
+          secure,
+          path: '/',
+        });
+      }
+
+      // (Opcional) 2.1 Sincronizar o supabase-js com a sessão actual
+      try {
+        await supabase.auth.setSession({ access_token, refresh_token });
+      } catch {
+        // não é crítico se falhar
+      }
+
+      // 3) Buscar PROFILE (REST)
+      const profileResp = await fetch(
+        `${SB_URL}/rest/v1/profiles?id=eq.${user.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': SB_ANON,
+            'Authorization': `Bearer ${access_token}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (!profileResp.ok) {
+        // limpar cookies em caso de erro
+        Cookies.remove(ACCESS_COOKIE, { path: '/' });
+        Cookies.remove(REFRESH_COOKIE, { path: '/' });
+        throw new Error('Não foi possível carregar o perfil.');
+      }
+
+      const profileList = await profileResp.json();
+      const profile = Array.isArray(profileList) ? profileList[0] : profileList;
+
+      if (!profile) {
+        Cookies.remove(ACCESS_COOKIE, { path: '/' });
+        Cookies.remove(REFRESH_COOKIE, { path: '/' });
+        throw new Error('Perfil não encontrado.');
+      }
+
+      // 4) Verificar role
+      if (profile.role_profile !== 'admin') {
+        Cookies.remove(ACCESS_COOKIE, { path: '/' });
+        Cookies.remove(REFRESH_COOKIE, { path: '/' });
+        throw new Error('Acesso negado. Apenas administradores podem entrar.');
+      }
+
+      // 5) Login OK → entregar dados ao app
+      onLogin({
+        id: profile.id,
+        name: profile.full_name || 'Administrador',
+        email: profile.email || email,
+        role: profile.role_profile,
+        token: access_token,
+        expires_in,
+        expires_at,
+        avatar_url: profile.avatar_url ?? null,
+      });
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Erro inesperado no login.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,6 +196,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </button>
               </div>
             </div>
+
+            {errorMessage && (
+              <p className="text-red-500 text-sm text-center">{errorMessage}</p>
+            )}
 
             <button
               type="submit"

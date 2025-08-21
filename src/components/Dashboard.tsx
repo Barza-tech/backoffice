@@ -5,12 +5,13 @@ import { DashboardHome } from './pages/DashboardHome';
 import { UsersPage } from './pages/UsersPage';
 import { AppointmentsPage } from './pages/AppointmentsPage';
 import { MapPage } from './pages/MapPage';
-import { NotificationsPage } from './pages/NotificationsPage';
 import { StatisticsPage } from './pages/StatisticsPage';
 import { PaymentsPage } from './pages/PaymentsPage';
+import { CommissionsPage } from './pages/CommissionsPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { ContentPage } from './pages/ContentPage';
 import { SettingsPage } from './pages/SettingsPage';
+import Notifications from './pages/NotificationsPage';
 
 interface DashboardProps {
   user: any;
@@ -32,11 +33,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       case 'map':
         return <MapPage />;
       case 'notifications':
-        return <NotificationsPage />;
+        return <Notifications />;
       case 'statistics':
         return <StatisticsPage />;
       case 'payments':
         return <PaymentsPage />;
+      case 'commissions':
+        return <CommissionsPage />;
       case 'reviews':
         return <ReviewsPage />;
       case 'content':
