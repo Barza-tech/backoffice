@@ -19,7 +19,7 @@ export const UsersPage = () => {
   // paginação
   const [pageClients, setPageClients] = useState(1);
   const [pageSpaces, setPageSpaces] = useState(1);
-  const limit = 10;
+  const limit = 4;
   const [totalClients, setTotalClients] = useState(0);
   const [totalSpaces, setTotalSpaces] = useState(0);
 
