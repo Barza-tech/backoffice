@@ -5,7 +5,10 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-     "baseUrl": ".",
+    "target": "esnext",
+    "module": "esnext",                 // ✅ permite usar import.meta
+    "moduleResolution": "node",         // ✅ resolução de módulos
+    "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@utils/*": ["utils/*"]
