@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Search, Filter, Plus, MapPin, Star } from "lucide-react";
+import { Search, Filter, Plus, MapPin } from "lucide-react";
 import Cookies from "js-cookie";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -9,12 +9,21 @@ const ACCESS_COOKIE = "sb-access-token";
 export const UsersPage = () => {
   const [activeTab, setActiveTab] = useState("clients");
   const [searchTerm, setSearchTerm] = useState("");
+
   const [clients, setClients] = useState<any[]>([]);
   const [spaces, setSpaces] = useState<any[]>([]);
+
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingSpaces, setLoadingSpaces] = useState(false);
 
-  // 🔹 Fetch profiles (clientes)
+  // paginação
+  const [pageClients, setPageClients] = useState(1);
+  const [pageSpaces, setPageSpaces] = useState(1);
+  const limit = 10;
+  const [totalClients, setTotalClients] = useState(0);
+  const [totalSpaces, setTotalSpaces] = useState(0);
+
+  // 🔹 Fetch profiles (clientes) com paginação
   useEffect(() => {
     const fetchProfiles = async () => {
       setLoadingClients(true);
@@ -22,18 +31,32 @@ export const UsersPage = () => {
         const token = Cookies.get(ACCESS_COOKIE);
         if (!token) return;
 
-        const resp = await fetch(`${SB_URL}/rest/v1/profiles`, {
-          headers: {
-            apikey: SB_ANON,
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
+        const from = (pageClients - 1) * limit;
+        const to = from + limit - 1;
+
+        const resp = await fetch(
+          `${SB_URL}/rest/v1/profiles?order=created_at.desc`,
+          {
+            headers: {
+              apikey: SB_ANON,
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+              Range: `${from}-${to}`,
+              Prefer: "count=exact",
+            },
+          }
+        );
 
         if (!resp.ok) throw new Error("Erro ao buscar perfis.");
 
         const data = await resp.json();
         setClients(data);
+
+        const total = resp.headers.get("content-range");
+        if (total) {
+          const [, totalCount] = total.split("/");
+          setTotalClients(Number(totalCount));
+        }
       } catch (err) {
         console.error(err);
         setClients([]);
@@ -43,9 +66,9 @@ export const UsersPage = () => {
     };
 
     fetchProfiles();
-  }, []);
+  }, [pageClients]);
 
-  // 🔹 Fetch professional spaces
+  // 🔹 Fetch professional spaces com paginação
   useEffect(() => {
     const fetchSpaces = async () => {
       setLoadingSpaces(true);
@@ -53,18 +76,32 @@ export const UsersPage = () => {
         const token = Cookies.get(ACCESS_COOKIE);
         if (!token) return;
 
-        const resp = await fetch(`${SB_URL}/rest/v1/professional_space`, {
-          headers: {
-            apikey: SB_ANON,
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
+        const from = (pageSpaces - 1) * limit;
+        const to = from + limit - 1;
+
+        const resp = await fetch(
+          `${SB_URL}/rest/v1/professional_space?order=created_at.desc`,
+          {
+            headers: {
+              apikey: SB_ANON,
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+              Range: `${from}-${to}`,
+              Prefer: "count=exact",
+            },
+          }
+        );
 
         if (!resp.ok) throw new Error("Erro ao buscar espaços.");
 
         const data = await resp.json();
         setSpaces(data);
+
+        const total = resp.headers.get("content-range");
+        if (total) {
+          const [, totalCount] = total.split("/");
+          setTotalSpaces(Number(totalCount));
+        }
       } catch (err) {
         console.error(err);
         setSpaces([]);
@@ -74,7 +111,7 @@ export const UsersPage = () => {
     };
 
     fetchSpaces();
-  }, []);
+  }, [pageSpaces]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,6 +139,9 @@ export const UsersPage = () => {
     }
   };
 
+  const totalPagesClients = Math.ceil(totalClients / limit) || 1;
+  const totalPagesSpaces = Math.ceil(totalSpaces / limit) || 1;
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -123,7 +163,7 @@ export const UsersPage = () => {
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Clientes ({clients.length})
+          Clientes ({totalClients})
         </button>
         <button
           onClick={() => setActiveTab("barbers")}
@@ -133,7 +173,7 @@ export const UsersPage = () => {
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Profissionais ({spaces.length})
+          Profissionais ({totalSpaces})
         </button>
       </div>
 
@@ -171,51 +211,86 @@ export const UsersPage = () => {
               Carregando clientes...
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Cliente
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Contacto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Localização
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {clients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">{client.full_name}</td>
-                      <td className="px-6 py-4">{client.phone}</td>
-                      <td className="px-6 py-4 flex items-center">
-                        <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                        {client.location}
-                      </td>
-                      <td className="px-6 py-4">{client.user_type}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                            client.status || "active"
-                          )}`}
-                        >
-                          {getStatusText(client.status || "active")}
-                        </span>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Cliente
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Contacto
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Localização
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Tipo
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Estado
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {clients.map((client) => (
+                      <tr key={client.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 flex items-center gap-3">
+                          <img
+                            src={
+                              client.avatar_url ||
+                              "https://via.placeholder.com/40"
+                            }
+                            alt={client.full_name}
+                            className="w-10 h-10 rounded-full object-cover border"
+                          />
+                          <span>{client.full_name}</span>
+                        </td>
+                        <td className="px-6 py-4">{client.phone}</td>
+                        <td className="px-6 py-4 flex items-center">
+                          <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                          {client.location}
+                        </td>
+                        <td className="px-6 py-4">{client.user_type}</td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
+                              client.status || "active"
+                            )}`}
+                          >
+                            {getStatusText(client.status || "active")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginação */}
+              <div className="flex justify-between items-center p-4 border-t bg-gray-50">
+                <button
+                  disabled={pageClients === 1}
+                  onClick={() =>
+                    setPageClients((p) => Math.max(p - 1, 1))
+                  }
+                  className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <span>
+                  Página {pageClients} de {totalPagesClients}
+                </span>
+                <button
+                  disabled={pageClients === totalPagesClients}
+                  onClick={() => setPageClients((p) => p + 1)}
+                  className="px-3 py-1 rounded bg-blue-600 text-white"
+                >
+                  Próxima
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -228,45 +303,70 @@ export const UsersPage = () => {
               Carregando profissionais...
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Espaço
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Serviços
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Localização
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Contacto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Preço
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {spaces.map((space) => (
-                    <tr key={space.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">{space.space_name}</td>
-                      <td className="px-6 py-4">
-                        {JSON.parse(space.beauty_services).join(", ")}
-                      </td>
-                      <td className="px-6 py-4 flex items-center">
-                        <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                        {space.location_space?.address}
-                      </td>
-                      <td className="px-6 py-4">{space.phone}</td>
-                      <td className="px-6 py-4">{space.rate} Kz</td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Espaço
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Serviços
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Localização
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Contacto
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Preço
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {spaces.map((space) => (
+                      <tr key={space.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">{space.space_name}</td>
+                        <td className="px-6 py-4">
+                          {JSON.parse(space.beauty_services).join(", ")}
+                        </td>
+                        <td className="px-6 py-4 flex items-center">
+                          <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                          {space.location_space?.address}
+                        </td>
+                        <td className="px-6 py-4">{space.phone}</td>
+                        <td className="px-6 py-4">{space.rate} Kz</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginação */}
+              <div className="flex justify-between items-center p-4 border-t bg-gray-50">
+                <button
+                  disabled={pageSpaces === 1}
+                  onClick={() =>
+                    setPageSpaces((p) => Math.max(p - 1, 1))
+                  }
+                  className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <span>
+                  Página {pageSpaces} de {totalPagesSpaces}
+                </span>
+                <button
+                  disabled={pageSpaces === totalPagesSpaces}
+                  onClick={() => setPageSpaces((p) => p + 1)}
+                  className="px-3 py-1 rounded bg-blue-600 text-white"
+                >
+                  Próxima
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
