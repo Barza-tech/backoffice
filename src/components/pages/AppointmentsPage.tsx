@@ -31,7 +31,7 @@ export const AppointmentsPage = () => {
         const token = Cookies.get(ACCESS_COOKIE);
         if (!token) return;
 
-        const resp = await fetch(`${SB_URL}/rest/v1/booking_details`, {
+        const resp = await fetch(`${SB_URL}/rest/v1/booking_details?order`, {
           headers: {
             apikey: SB_ANON,
             Authorization: `Bearer ${token}`,
