@@ -19,6 +19,8 @@ export const CommissionsPage = () => {
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState(null);
   const [adminComment, setAdminComment] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchCommissions = async () => {
@@ -55,6 +57,11 @@ export const CommissionsPage = () => {
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Paginação
+  const totalPages = Math.ceil(filteredCommissions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentCommissions = filteredCommissions.slice(startIndex, startIndex + itemsPerPage);
 
   // Estatísticas
   const summaryStats = {
@@ -179,61 +186,82 @@ export const CommissionsPage = () => {
       {loading ? (
         <div className="text-center py-10 text-gray-500">Carregando comissões...</div>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-left">
-              <tr>
-                <th className="p-3">Espaço Profissional</th>
-                <th className="p-3">Comissão</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Data de Criação</th>
-                <th className="p-3">Comprovativo</th>
-                <th className="p-3 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCommissions.map(c => (
-                <tr key={c.commission_id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">{c.professional_space?.space_name}</td>
-                  <td className="p-3 font-medium">KZ{c.amount.toFixed(2)}</td>
-                  <td className="p-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(c.status)}`}>
-                      {getStatusText(c.status)}
-                    </span>
-                  </td>
-                  <td className="p-3">{dayjs(c.commission_created_at).format('DD/MM/YYYY HH:mm')}</td>
-                  <td className="p-3">
-                    {c.comprovative ? (
-                      <button
-                        onClick={() => handleViewReceipt(c)}
-                        className="flex items-center gap-1 text-blue-600 hover:underline"
-                      >
-                        <FileText className="w-4 h-4" /> Ver PDF
-                      </button>
-                    ) : (
-                      <span className="text-gray-400 italic">Sem comprovativo</span>
-                    )}
-                  </td>
-                  <td className="p-3 flex justify-center gap-2">
-                    {c.status === 'pending' && (
-                      <>
-                        <button onClick={() => handleValidatePayment(c)} className="p-1 rounded hover:bg-green-50">
-                          <Check className="w-4 h-4 text-green-600" />
-                        </button>
-                        <button onClick={() => handleRejectPayment(c)} className="p-1 rounded hover:bg-red-50">
-                          <X className="w-4 h-4 text-red-600" />
-                        </button>
-                      </>
-                    )}
-                    <button onClick={() => setSelectedCommission(c) || setShowCommentsModal(true)} className="p-1 rounded hover:bg-gray-50">
-                      <MessageSquare className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </td>
+        <>
+          <div className="overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 text-left">
+                <tr>
+                  <th className="p-3">Espaço Profissional</th>
+                  <th className="p-3">Comissão</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Data de Criação</th>
+                  <th className="p-3">Comprovativo</th>
+                  <th className="p-3 text-center">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {currentCommissions.map(c => (
+                  <tr key={c.commission_id} className="border-t hover:bg-gray-50">
+                    <td className="p-3">{c.professional_space?.space_name}</td>
+                    <td className="p-3 font-medium">KZ{c.amount.toFixed(2)}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(c.status)}`}>
+                        {getStatusText(c.status)}
+                      </span>
+                    </td>
+                    <td className="p-3">{dayjs(c.commission_created_at).format('DD/MM/YYYY HH:mm')}</td>
+                    <td className="p-3">
+                      {c.comprovative ? (
+                        <button
+                          onClick={() => handleViewReceipt(c)}
+                          className="flex items-center gap-1 text-blue-600 hover:underline"
+                        >
+                          <FileText className="w-4 h-4" /> Ver PDF
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 italic">Sem comprovativo</span>
+                      )}
+                    </td>
+                    <td className="p-3 flex justify-center gap-2">
+                      {c.status === 'pending' && (
+                        <>
+                          <button onClick={() => handleValidatePayment(c)} className="p-1 rounded hover:bg-green-50">
+                            <Check className="w-4 h-4 text-green-600" />
+                          </button>
+                          <button onClick={() => handleRejectPayment(c)} className="p-1 rounded hover:bg-red-50">
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
+                        </>
+                      )}
+                      <button onClick={() => setSelectedCommission(c) || setShowCommentsModal(true)} className="p-1 rounded hover:bg-gray-50">
+                        <MessageSquare className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-4">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="px-3 py-1 border rounded disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
+        </>
       )}
 
       {/* Modal Recibo */}
