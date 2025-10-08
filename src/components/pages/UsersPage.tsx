@@ -225,9 +225,7 @@ export const UsersPage = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Localização
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Tipo
-                      </th>
+                    
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Estado
                       </th>
@@ -250,9 +248,9 @@ export const UsersPage = () => {
                         <td className="px-6 py-4">{client.phone}</td>
                         <td className="px-6 py-4 flex items-center">
                           <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                          {client.location}
+                          {client.profile_location.address || "N/A"}
                         </td>
-                        <td className="px-6 py-4">{client.user_type}</td>
+             
                         <td className="px-6 py-4">
                           <span
                             className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
@@ -321,7 +319,7 @@ export const UsersPage = () => {
                         Contacto
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Preço
+                        Avaliação
                       </th>
                     </tr>
                   </thead>
@@ -337,7 +335,7 @@ export const UsersPage = () => {
                           {space.location_space?.address}
                         </td>
                         <td className="px-6 py-4">{space.phone}</td>
-                        <td className="px-6 py-4">{space.rate} Kz</td>
+                        <td className="px-6 py-4">{space.rate} </td>
                       </tr>
                     ))}
                   </tbody>
