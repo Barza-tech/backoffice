@@ -1,81 +1,54 @@
-   import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Clock, DollarSign, AlertTriangle, Check, X, Search, FileText, MessageSquare } from 'lucide-react';
+import React, { useState } from 'react';
 import dayjs from 'dayjs';
+import { 
+  Clock, DollarSign, AlertTriangle, Check, X, Search, FileText, MessageSquare 
+} from 'lucide-react';
+import { Commission, useCommissions } from '../../hooks/useCommissions';
 
-const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-const SB_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const ACCESS_COOKIE = "sb-access-token";
-
-const supabase = createClient(SB_URL, SB_ANON);
 
 export const CommissionsPage = () => {
-  const [commissions, setCommissions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { commissions, loading } = useCommissions();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<Commission | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
-  const [selectedCommission, setSelectedCommission] = useState(null);
   const [adminComment, setAdminComment] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    const fetchCommissions = async () => {
-      setLoading(true);
-      try {
-        const token = document.cookie
-          .split('; ')
-          .find(row => row.startsWith(`${ACCESS_COOKIE}=`))
-          ?.split('=')[1];
-
-        if (!token) throw new Error('Token de acesso não encontrado');
-
-        const { data, error } = await supabase.rpc('get_commissions_with_space', {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (error) throw error;
-        setCommissions(data);
-      } catch (error) {
-        console.error('Erro ao carregar comissões:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCommissions();
-  }, []);
-
   // Filtros
-  const filteredCommissions = commissions.filter(c => {
-    const matchesSearch =
-      c.professional_space?.space_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.booking_id?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCommissions = commissions.filter(c =>
+    (c.professional_space?.space_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     c.booking_id?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (statusFilter === 'all' || c.status === statusFilter)
+  );
 
   // Paginação
   const totalPages = Math.ceil(filteredCommissions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentCommissions = filteredCommissions.slice(startIndex, startIndex + itemsPerPage);
+  const currentCommissions = filteredCommissions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Estatísticas
-  const summaryStats = {
-    totalPending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
-    totalBlocked: commissions.filter(c => c.status === 'blocked').reduce((sum, c) => sum + c.amount, 0),
-    totalValidated: commissions.filter(c => c.status === 'validated').reduce((sum, c) => sum + c.amount, 0),
-    totalThisMonth: commissions.reduce((sum, c) => sum + c.amount, 0),
-    pendingCount: commissions.filter(c => c.status === 'pending').length,
-    blockedCount: commissions.filter(c => c.status === 'blocked').length,
-    validatedCount: commissions.filter(c => c.status === 'validated').length,
-    rejectedCount: commissions.filter(c => c.status === 'rejected').length,
-  };
+  const summaryStats = commissions.reduce(
+    (acc, c) => {
+      acc.totalThisMonth += c.amount;
+      acc[c.status + 'Count'] = (acc[c.status + 'Count'] || 0) + 1;
+      acc['total' + capitalize(c.status)] = (acc['total' + capitalize(c.status)] || 0) + c.amount;
+      return acc;
+    },
+    { totalPending: 0, totalBlocked: 0, totalValidated: 0, totalThisMonth: 0, pendingCount: 0, blockedCount: 0, validatedCount: 0, rejectedCount: 0 }
+  );
 
-  const getStatusColor = (status) => {
+  function capitalize(str: string) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'validated': return 'bg-green-100 text-green-800';
@@ -85,7 +58,7 @@ export const CommissionsPage = () => {
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'pending': return 'Pendente';
       case 'validated': return 'Validado';
@@ -95,18 +68,18 @@ export const CommissionsPage = () => {
     }
   };
 
-  const handleViewReceipt = (commission) => {
+  const handleViewReceipt = (commission: Commission) => {
     if (commission.comprovative) {
       setSelectedReceipt(commission);
       setShowReceiptModal(true);
     }
   };
 
-  const handleValidatePayment = (commission) => {
-    console.log('Validando pagamento para:', commission.commission_id);
+  const handleValidatePayment = (commission: Commission) => {
+    console.log('Validando pagamento:', commission.commission_id);
   };
 
-  const handleRejectPayment = (commission) => {
+  const handleRejectPayment = (commission: Commission) => {
     setSelectedCommission(commission);
     setAdminComment(commission.adminComments || '');
     setShowCommentsModal(true);
