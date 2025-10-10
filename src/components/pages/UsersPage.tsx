@@ -225,7 +225,6 @@ export const UsersPage = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Localização
                       </th>
-                    
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Estado
                       </th>
@@ -248,9 +247,9 @@ export const UsersPage = () => {
                         <td className="px-6 py-4">{client.phone}</td>
                         <td className="px-6 py-4 flex items-center">
                           <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                          {client.profile_location.address || "N/A"}
+                          {client.profile_location?.address || "N/A"}
                         </td>
-             
+
                         <td className="px-6 py-4">
                           <span
                             className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
@@ -328,11 +327,18 @@ export const UsersPage = () => {
                       <tr key={space.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">{space.space_name}</td>
                         <td className="px-6 py-4">
-                          {JSON.parse(space.beauty_services).join(", ")}
+                          {(() => {
+                            try {
+                              const services = JSON.parse(space?.beauty_services || "[]");
+                              return Array.isArray(services) && services.length ? services.join(", ") : "N/A";
+                            } catch {
+                              return "N/A";
+                            }
+                          })()}
                         </td>
                         <td className="px-6 py-4 flex items-center">
                           <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                          {space.location_space?.address}
+                          {space.location_space?.address || "N/A"}
                         </td>
                         <td className="px-6 py-4">{space.phone}</td>
                         <td className="px-6 py-4">{space.rate} </td>
